@@ -98,7 +98,7 @@ readonly G_IMX_GPU_G2D_PKG="imx-gpu-g2d-6.2.4.p1.2"
 readonly G_IMX_GPU_G2D_LOCAL_DIR="${DEF_SRC_DIR}/imx/${G_IMX_GPU_G2D_PKG}"
 readonly G_IMX_GPU_G2D_LOCAL_PATH="${DEF_SRC_DIR}/imx/${G_IMX_GPU_G2D_PKG}.bin"
 readonly G_IMX_GPU_G2D_REMOTE_LINK="${G_FSL_MIRROR}/${G_IMX_GPU_G2D_PKG}.bin"
-# sh imx-gpu-viv-6.2.4.p1.2-aarch32.bin --auto-accept
+# sh imx-gpu-viv-5.0.11.p8.6-hfp.bin --auto-accept
 readonly G_IMX_GPU_VIV_PKG="imx-gpu-viv-6.2.4.p1.2-aarch32"
 readonly G_IMX_GPU_VIV_LOCAL_DIR="${DEF_SRC_DIR}/imx/${G_IMX_GPU_VIV_PKG}"
 readonly G_IMX_GPU_VIV_LOCAL_PATH="${DEF_SRC_DIR}/imx/${G_IMX_GPU_VIV_PKG}.bin"
@@ -128,7 +128,10 @@ readonly G_CROSS_COMPILER_JOPTION="-j 4"
 readonly G_EXT_CROSS_COMPILER_LINK="http://releases.linaro.org/components/toolchain/binaries/6.3-2017.05/arm-linux-gnueabihf/${G_CROSS_COMPILER_ARCHIVE}"
 
 ############## user rootfs packages ##########
-readonly G_USER_PACKAGES=""
+readonly G_USER_PACKAGES="libgif7 libxrandr2 libxfixes3 libcairo2 libzmq5 libprotobuf17 curl xloadimage vim less"
+
+# Our rootfs "overlay" that gets applied to the rootfs after it's built
+readonly G_USER_ROOTFS_DIR="${DEF_BUILDENV}/user_rootfs"
 
 #### Input params #####
 PARAM_DEB_LOCAL_MIRROR="${DEF_DEBIAN_MIRROR}"
@@ -424,31 +427,13 @@ protected_install dosfstools
 sed -i -e 's/#PermitRootLogin.*/PermitRootLogin\tyes/g' /etc/ssh/sshd_config
 
 # enable graphical desktop
-protected_install xorg
-protected_install xfce4
-protected_install xfce4-goodies
-
-# sound mixer & volume
-# xfce-mixer is not part of Stretch since the stable versionit depends on
-# gstreamer-0.10, no longer used
-# Stretch now uses PulseAudio and xfce4-pulseaudio-plugin is included in
-# Xfce desktop and can be added to Xfce panels.
-#protected_install xfce4-mixer
-#protected_install xfce4-volumed
+protected_install xorg 
 
 # network manager
-protected_install network-manager-gnome
+protected_install network-manager
 
 # net-tools (ifconfig, etc.)
 protected_install net-tools
-
-## fix lightdm config (added autologin x_user) ##
-sed -i -e 's/\#autologin-user=/autologin-user=x_user/g' /etc/lightdm/lightdm.conf
-sed -i -e 's/\#autologin-user-timeout=0/autologin-user-timeout=0/g' /etc/lightdm/lightdm.conf
-
-# added alsa & alsa utilites
-protected_install alsa-utils
-protected_install gstreamer1.0-alsa
 
 # added i2c tools
 protected_install i2c-tools
@@ -459,23 +444,8 @@ protected_install usbutils
 # added net tools
 protected_install iperf
 
-#media
-protected_install audacious
-# protected_install parole
-
 # mtd
 protected_install mtd-utils
-
-# bluetooth
-protected_install bluetooth
-protected_install bluez-obexd
-protected_install bluez-tools
-protected_install blueman
-protected_install gconf2
-
-# wifi support packages
-protected_install hostapd
-protected_install udhcpd
 
 # can support
 protected_install can-utils
@@ -502,6 +472,7 @@ useradd -m -G audio -s /bin/bash user
 useradd -m -G audio -s /bin/bash x_user
 usermod -a -G video user
 usermod -a -G video x_user
+usermod -a -G i2c x_user 
 echo "user:user" | chpasswd
 echo "root:root" | chpasswd
 passwd -d x_user
@@ -516,30 +487,65 @@ EOF
 
 ## fourth-stage ##
 ### install variscite-bluetooth init script
-	install -m 0755 ${G_VARISCITE_PATH}/variscite-bluetooth ${ROOTFS_BASE}/etc/init.d/
-	LANG=C chroot ${ROOTFS_BASE} update-rc.d variscite-bluetooth defaults
-	LANG=C chroot ${ROOTFS_BASE} update-rc.d variscite-bluetooth enable 2 3 4 5
+#	install -m 0755 ${G_VARISCITE_PATH}/variscite-bluetooth ${ROOTFS_BASE}/etc/init.d/
+#	LANG=C chroot ${ROOTFS_BASE} update-rc.d variscite-bluetooth defaults
+#	LANG=C chroot ${ROOTFS_BASE} update-rc.d variscite-bluetooth enable 2 3 4 5
 
 ## end packages stage ##
-[ "${G_USER_PACKAGES}" != "" ] && {
+pr_info "rootfs: install user defined packages (user-stage)"
+pr_info "rootfs: G_USER_PACKAGES \"${G_USER_PACKAGES}\" "
 
-	pr_info "rootfs: install user defined packages (user-stage)"
-	pr_info "rootfs: G_USER_PACKAGES \"${G_USER_PACKAGES}\" "
+# Need a separate script to install node as the user,
+# since NVM is a bash function only loaded via bashrc.
+echo "#!/bin/bash
+export NVM_DIR=\$HOME/.nvm
+source \$NVM_DIR/nvm.sh
+nvm install 16
+" > ${ROOTFS_BASE}/home/x_user/nvm-install
+chmod +x ${ROOTFS_BASE}/home/x_user/nvm-install
+
+# Need to create the x11 login script before we run the user-stage script as well.
+echo "
+[Unit]
+After=systemd-user-sessions.service
+
+[Service]
+ExecStart=/bin/su x_user -l -c /usr/bin/startx -- VT08
+StandardOutput=journal
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=graphical.target
+" > ${ROOTFS_BASE}/etc/systemd/system/vapr.service
 
 echo "#!/bin/bash
+set -x
 # update packages
+echo "user-stage apt update"
 apt-get update
 
 # install all user packages
+echo "user-stage apt install"
 apt-get -y install ${G_USER_PACKAGES}
+
+# Install NVM for x_user
+echo "user-stage nvm install"
+pushd /home/x_user
+curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | su x_user -c bash
+# As x_user, install Nodev16
+echo "user-stage node install"
+su x_user -c /home/x_user/nvm-install
+popd
+
+# Enable the custom autologin and userspace sw service.
+systemctl enable vapr
 
 rm -f user-stage
 " > user-stage
 
-	chmod +x user-stage
-	LANG=C chroot ${ROOTFS_BASE} /user-stage
-
-};
+chmod +x user-stage
+LANG=C chroot ${ROOTFS_BASE} /user-stage
 
 ## binaries rootfs patching ##
 	install -m 0644 ${G_VARISCITE_PATH}/issue ${ROOTFS_BASE}/etc/
@@ -603,6 +609,10 @@ rm -f user-stage
 
 ## install iMX VPU libs
 	LANG=C LC_ALL=C chroot ${ROOTFS_BASE} /chroot_script_gst.sh
+
+	# Copy our user rootfs stage over the top of the rootfs
+	echo "Copying user rootfs overlay from ${G_USER_ROOTFS_DIR} to ${ROOTFS_BASE}"
+	cp -rv ${G_USER_ROOTFS_DIR}/* ${ROOTFS_BASE}/
 
 ## clenup command
 echo "#!/bin/bash
@@ -1070,6 +1080,10 @@ function cmd_make_deploy() {
 	(( `ls ${G_LINUX_KERNEL_SRC_DIR} 2>/dev/null | wc -l` == 0 )) && {
 		pr_info "Get kernel repository";
 		get_git_src ${G_LINUX_KERNEL_GIT} ${G_LINUX_KERNEL_BRANCH} ${G_LINUX_KERNEL_SRC_DIR} ${G_LINUX_KERNEL_REV}
+		cd ${G_LINUX_KERNEL_SRC_DIR}
+		# patch the kernel to enable the lvds outputs as appropriate
+		patch -p1 < ${DEF_BUILDENV}/patches/vapr/lvds.patch
+		cd -
 	};
 
 	# get wilink8 utils repository

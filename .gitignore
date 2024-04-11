@@ -74,3 +74,9 @@ tmp
 *~
 \#*#
 
+# Don't check in the vapr application software
+user_rootfs/opt/vapr
+
+# Or any img/img.gz files in the root dirs
+*.img
+*.img.gz
