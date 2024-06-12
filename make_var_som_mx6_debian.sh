@@ -128,7 +128,7 @@ readonly G_CROSS_COMPILER_JOPTION="-j 4"
 readonly G_EXT_CROSS_COMPILER_LINK="http://releases.linaro.org/components/toolchain/binaries/6.3-2017.05/arm-linux-gnueabihf/${G_CROSS_COMPILER_ARCHIVE}"
 
 ############## user rootfs packages ##########
-readonly G_USER_PACKAGES="libgif7 libxrandr2 libxfixes3 libcairo2 libzmq5 libprotobuf17 curl xloadimage vim less"
+readonly G_USER_PACKAGES="libgif7 libxrandr2 libxfixes3 libcairo2 libzmq5 libprotobuf17 curl xloadimage vim less sudo"
 
 # Our rootfs "overlay" that gets applied to the rootfs after it's built
 readonly G_USER_ROOTFS_DIR="${DEF_BUILDENV}/user_rootfs"
@@ -340,6 +340,10 @@ function make_debian_rootfs() {
 	echo "user ALL=(root) /usr/bin/apt-get, /usr/bin/dpkg, /usr/bin/vi, /sbin/reboot" > ${ROOTFS_BASE}/etc/sudoers.d/user
 	chmod 0440 ${ROOTFS_BASE}/etc/sudoers.d/user
 
+	# Let x_user reboot the system and modify the network without passwords
+	echo "x_user ALL=NOPASSWD: /sbin/reboot, /usr/bin/nmcli" > ${ROOTFS_BASE}/etc/sudoers.d/x_user
+	chmod 0440 ${ROOTFS_BASE}/etc/sudoers.d/x_user
+
 ## added mirror to source list
 echo "deb ${DEF_DEBIAN_MIRROR} ${DEB_RELEASE} main contrib non-free
 deb-src ${DEF_DEBIAN_MIRROR} ${DEB_RELEASE} main contrib non-free
@@ -473,6 +477,7 @@ useradd -m -G audio -s /bin/bash x_user
 usermod -a -G video user
 usermod -a -G video x_user
 usermod -a -G i2c x_user 
+usermod -a -G sudo x_user 
 echo "user:user" | chpasswd
 echo "root:root" | chpasswd
 passwd -d x_user
