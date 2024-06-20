@@ -6,5 +6,5 @@ if [ "$#" -ne 1 ]; then
 fi
 
 rsync -av $1/* user_rootfs/opt/vapr
-
+chown -R 1001:1001 user_rootfs/opt/vapr
 

@@ -471,12 +471,16 @@ rm -rf /var/cache/man/??_*
 # Remove document files
 rm -rf /usr/share/doc
 
+# Create groups
+groupadd gpio
+
 # create users and set password
 useradd -m -G audio -s /bin/bash user
 useradd -m -G audio -s /bin/bash x_user
 usermod -a -G video user
 usermod -a -G video x_user
 usermod -a -G i2c x_user 
+usermod -a -G gpio x_user 
 usermod -a -G sudo x_user 
 echo "user:user" | chpasswd
 echo "root:root" | chpasswd
@@ -509,10 +513,25 @@ nvm install 16
 " > ${ROOTFS_BASE}/home/x_user/nvm-install
 chmod +x ${ROOTFS_BASE}/home/x_user/nvm-install
 
-# Need to create the x11 login script before we run the user-stage script as well.
+# We need to export some GPIO to userspace before we begin.
+# There is a script that we've copied into the rootfs that will do this,
+# but we need to run it as a service before x starts up.
 echo "
 [Unit]
 After=systemd-user-sessions.service
+
+[Service]
+ExecStart=/bin/bash /opt/gpio-export.sh
+StandardOutput=journal
+
+[Install]
+WantedBy=graphical.target
+" > ${ROOTFS_BASE}/etc/systemd/system/gpio-export.service
+
+# Need to create the x11 login script before we run the user-stage script as well.
+echo "
+[Unit]
+After=gpio-export.service
 
 [Service]
 ExecStart=/bin/su x_user -l -c /usr/bin/startx -- VT08
@@ -544,6 +563,7 @@ su x_user -c /home/x_user/nvm-install
 popd
 
 # Enable the custom autologin and userspace sw service.
+systemctl enable gpio-export
 systemctl enable vapr
 
 rm -f user-stage
