@@ -1,8 +1,8 @@
 diff --git a/arch/arm/boot/dts/imx6qdl-var-solocb-dt6cb-displays.dtsi b/arch/arm/boot/dts/imx6qdl-var-solocb-dt6cb-displays.dtsi
-index 45e5c9575522..5e5bc59a50f1 100644
+index 45e5c95..485fd41 100644
 --- a/arch/arm/boot/dts/imx6qdl-var-solocb-dt6cb-displays.dtsi
 +++ b/arch/arm/boot/dts/imx6qdl-var-solocb-dt6cb-displays.dtsi
-@@ -30,38 +30,39 @@
+@@ -30,37 +30,37 @@
  		display-timings {
  			native-mode = <&timing0>;
  			timing0: hsd100pxn1 {
@@ -15,28 +15,26 @@ index 45e5c9575522..5e5bc59a50f1 100644
 -				vfront-porch = <20>;
 -				hsync-len = <20>;
 -				vsync-len = <13>;
--			};
-+	      clock-frequency = <44426000>;
-+        hactive = <1152>;
-+        vactive = <576>;
-+        hback-porch = <32>;
-+        hfront-porch = <40>;
-+        vback-porch = <14>;
-+        vfront-porch = <3>;
-+        hsync-len = <8>;
-+        vsync-len = <8>;
-+	  	};
++				clock-frequency = <44426000>;
++				hactive = <1152>;
++				vactive = <576>;
++				hback-porch = <32>;
++				hfront-porch = <40>;
++				vback-porch = <14>;
++				vfront-porch = <3>;
++				hsync-len = <8>;
++				vsync-len = <8>;
+ 			};
  		};
  	};
  
  	lvds-channel@1 {
  		fsl,data-mapping = "spwg";
- 		fsl,data-width = <18>;
--		primary;
+-		fsl,data-width = <18>;
++		fsl,data-width = <24>;
+ 		primary;
  		status = "okay";
  
-+		primary;
-+
  		display-timings {
  			native-mode = <&timing1>;
  			timing1: hsd100pxn1 {
@@ -49,17 +47,15 @@ index 45e5c9575522..5e5bc59a50f1 100644
 -				vfront-porch = <13>;
 -				hsync-len = <47>;
 -				vsync-len = <2>;
--			};
-+        clock-frequency = <44426000>;
-+        hactive = <1152>;
-+        vactive = <576>;
-+        hback-porch = <32>;
-+        hfront-porch = <40>;
-+        vback-porch = <14>;
-+        vfront-porch = <3>;
-+        hsync-len = <8>;
-+        vsync-len = <8>;
-+      };
++				clock-frequency = <44426000>;
++				hactive = <1152>;
++				vactive = <576>;
++				hback-porch = <32>;
++				hfront-porch = <40>;
++				vback-porch = <14>;
++				vfront-porch = <3>;
++				hsync-len = <8>;
++				vsync-len = <8>;
+ 			};
  		};
  	};
- };
