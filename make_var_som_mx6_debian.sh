@@ -1108,6 +1108,7 @@ function cmd_make_deploy() {
 		cd ${G_LINUX_KERNEL_SRC_DIR}
 		# patch the kernel to enable the lvds outputs as appropriate
 		patch -p1 < ${DEF_BUILDENV}/patches/vapr/lvds.patch
+		patch -p1 < ${DEF_BUILDENV}/patches/vapr/pwm.patch
 		cd -
 	};
 
