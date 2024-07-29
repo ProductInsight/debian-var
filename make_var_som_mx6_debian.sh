@@ -1100,6 +1100,11 @@ function cmd_make_deploy() {
 	(( `ls ${G_UBOOT_SRC_DIR} 2>/dev/null | wc -l` == 0 )) && {
 		pr_info "Get uboot repository";
 		get_git_src ${G_UBOOT_GIT} ${G_UBOOT_BRANCH} ${G_UBOOT_SRC_DIR} ${G_UBOOT_REV}
+
+		cd ${G_UBOOT_SRC_DIR}
+		# patch uboot to include custom VAPR board
+		patch -p1 < ${DEF_BUILDENV}/patches/vapr_board.patch
+		cd -
 	};
 
 	# get kernel repository
@@ -1109,6 +1114,7 @@ function cmd_make_deploy() {
 		cd ${G_LINUX_KERNEL_SRC_DIR}
 		# patch the kernel to enable the lvds outputs as appropriate
 		patch -p1 < ${DEF_BUILDENV}/patches/vapr/lvds.patch
+		patch -p1 < ${DEF_BUILDENV}/patches/vapr/pwm.patch
 		cd -
 	};
 
