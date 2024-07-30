@@ -962,6 +962,7 @@ function make_sdcard() {
 	function flash_sdcard
 	{
 		pr_info "Flashing \"BOOT-VARSOM\" partition"
+		cp ${DEF_BUILDENV}/uEnv.txt ${P1_MOUNT_DIR}/
 		cp ${LPARAM_OUTPUT_DIR}/*.dtb	${P1_MOUNT_DIR}/
 		cp ${LPARAM_OUTPUT_DIR}/uImage	${P1_MOUNT_DIR}/uImage
 		sync

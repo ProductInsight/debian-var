@@ -1,8 +1,8 @@
 diff --git a/arch/arm/boot/dts/imx6qdl-var-solocb-dt6cb-displays.dtsi b/arch/arm/boot/dts/imx6qdl-var-solocb-dt6cb-displays.dtsi
-index 45e5c95..485fd41 100644
+index 45e5c95..8659cdb 100644
 --- a/arch/arm/boot/dts/imx6qdl-var-solocb-dt6cb-displays.dtsi
 +++ b/arch/arm/boot/dts/imx6qdl-var-solocb-dt6cb-displays.dtsi
-@@ -30,37 +30,37 @@
+@@ -30,42 +30,48 @@
  		display-timings {
  			native-mode = <&timing0>;
  			timing0: hsd100pxn1 {
@@ -59,3 +59,15 @@ index 45e5c95..485fd41 100644
  			};
  		};
  	};
+ };
+ 
+ &mxcfb1 {
+-	interface_pix_fmt = "RGB666";
++	default_bpp = <24>;
++	interface_pix_fmt = "RGB24";
++};
++
++&mxcfb3 {
++	default_bpp = <24>;
++	interface_pix_fmt = "RGB24";
+ };

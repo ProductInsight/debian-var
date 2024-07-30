@@ -1,0 +1,1 @@
+videoargs=setenv bootargs ${bootargs} video=mxcfb1:dev=ldb,if=RGB24 video=mxcfb3:dev=ldb,if=RGB24
