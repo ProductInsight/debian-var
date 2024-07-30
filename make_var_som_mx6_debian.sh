@@ -51,8 +51,8 @@ readonly G_UBOOT_SRC_DIR="${DEF_SRC_DIR}/uboot"
 readonly G_UBOOT_GIT="https://github.com/varigit/uboot-imx.git"
 readonly G_UBOOT_BRANCH="imx_v2017.03_4.9.11_1.0.0_ga_var01"
 readonly G_UBOOT_REV="a7869c2cde98e5f5b1886d8f54dff321a7aa0597"
-readonly G_UBOOT_DEF_CONFIG_MMC='mx6var_som_sd_config'
-readonly G_UBOOT_DEF_CONFIG_NAND='mx6var_som_nand_config'
+readonly G_UBOOT_DEF_CONFIG_MMC='vapr_sd_defconfig'
+readonly G_UBOOT_DEF_CONFIG_NAND='vapr_nand_defconfig'
 readonly G_UBOOT_NAME_FOR_EMMC='u-boot.img.mmc'
 readonly G_SPL_NAME_FOR_EMMC='SPL.mmc'
 readonly G_UBOOT_NAME_FOR_NAND='u-boot.img.nand'
@@ -136,6 +136,7 @@ readonly G_USER_ROOTFS_DIR="${DEF_BUILDENV}/user_rootfs"
 #### Input params #####
 PARAM_DEB_LOCAL_MIRROR="${DEF_DEBIAN_MIRROR}"
 PARAM_OUTPUT_DIR="${DEF_BUILDENV}/output"
+PARAM_PROD_SW_DIR="${DEF_BUILDENV}/production_sw"
 PARAM_DEBUG="0"
 PARAM_CMD="all"
 PARAM_BLOCK_DEVICE="na"
@@ -1100,6 +1101,11 @@ function cmd_make_deploy() {
 	(( `ls ${G_UBOOT_SRC_DIR} 2>/dev/null | wc -l` == 0 )) && {
 		pr_info "Get uboot repository";
 		get_git_src ${G_UBOOT_GIT} ${G_UBOOT_BRANCH} ${G_UBOOT_SRC_DIR} ${G_UBOOT_REV}
+
+		cd ${G_UBOOT_SRC_DIR}
+		# patch uboot to include custom VAPR board
+		patch -p1 < ${DEF_BUILDENV}/patches/vapr_board.patch
+		cd -
 	};
 
 	# get kernel repository
@@ -1189,6 +1195,61 @@ function cmd_make_deploy() {
 		pr_info "Get gstreamer-imx repository";
 		get_git_src ${G_IMX_GSTREAMER_GIT} ${G_IMX_GSTREAMER_GIT_BRANCH} ${G_IMX_GSTREAMER_SRC_DIR} ${G_IMX_GSTREAMER_GIT_SRCREV}
 	};
+
+	return 0;
+}
+
+function cmd_make_production_sw() {
+	pr_info "Making Production SW Image"
+
+	## create out dir
+	mkdir -p ${PARAM_PROD_SW_DIR} && :;
+	cd ${PARAM_PROD_SW_DIR}
+
+	rm -rf ${PARAM_PROD_SW_DIR}/* || {
+		pr_error "Failed #$? prepare production sw dir"
+		return 1;
+	};
+
+	cp ${DEF_BUILDENV}/vapr-install.sh .
+	chmod +x ./vapr-install.sh
+
+	pr_info "Copying boot files..."
+
+	cp ${PARAM_OUTPUT_DIR}/${G_UBOOT_NAME_FOR_EMMC} .
+	cp ${PARAM_OUTPUT_DIR}/${G_SPL_NAME_FOR_EMMC} .
+	cp ${PARAM_OUTPUT_DIR}/${G_UBOOT_NAME_FOR_NAND} .
+	cp ${PARAM_OUTPUT_DIR}/${G_SPL_NAME_FOR_NAND} .
+	cp ${PARAM_OUTPUT_DIR}/${G_SPL_NAME_FOR_NAND} .
+	cp ${PARAM_OUTPUT_DIR}/uImage .
+	cp ${PARAM_OUTPUT_DIR}/*.dtb .
+
+	pr_info "Splitting rootfs image..."
+	split -b 50M -d ${PARAM_OUTPUT_DIR}/rootfs.tar.gz rootfs.tar.gz.
+
+
+	PROD_IMG_SIZE=$((du -BG | grep -o '[0-9]\+') * 3)
+
+	pr_info "Creating vapr_install.img"
+
+	mkdir ${G_TMP_DIR}/vapr_install
+
+	#pr_info "Production Image Size: ${PROD_IMG_SIZE}"
+
+	dd if=/dev/zero of=vapr_install.img bs=1G count=5
+	mkfs.vfat vapr_install.img
+	mount -o loop vapr_install.img ${G_TMP_DIR}/vapr_install
+
+	#cp ./* -R ${G_TMP_DIR}/vapr_install
+	rsync -vr ${PARAM_PROD_SW_DIR}/ ${G_TMP_DIR}/vapr_install/ --exclude vapr_install.img
+	
+	sync
+
+	umount ${G_TMP_DIR}/vapr_install
+
+	rm -rf ${G_TMP_DIR}/vapr_install
+
+	cd -;
 
 	return 0;
 }
@@ -1328,6 +1389,11 @@ case $PARAM_CMD in
 		cmd_make_kernel || {
 			V_RET_CODE=1;
 		};
+		;;
+	prodsw )
+		cmd_make_production_sw || {
+			V_RET_CODE=1;
+		}
 		;;
 	modules )
 		cmd_make_kmodules || {
