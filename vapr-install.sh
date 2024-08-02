@@ -105,11 +105,8 @@ install_rootfs()
 	mount ${node}${part}${rootfspart} ${mountdir_prefix}${rootfspart}
 	printf "Extracting files"
     
-	cat ${MEDIA}/rootfs.tar.gz* | tar --warning=no-timestamp -xzp -C ${mountdir_prefix}${rootfspart}
+	cat ${MEDIA}/rootfs.tar.gz* | tar --warning=no-timestamp -xzp -C ${mountdir_prefix}${rootfspart} --checkpoint=.1200
     
-
-    cp ${MEDIA}/uEnv.txt ${mountdir_prefix}${rootfspart}
-
 	echo
 	echo
 	sync
