@@ -638,7 +638,7 @@ LANG=C chroot ${ROOTFS_BASE} /user-stage
 
 	# Copy our user rootfs stage over the top of the rootfs
 	echo "Copying user rootfs overlay from ${G_USER_ROOTFS_DIR} to ${ROOTFS_BASE}"
-	cp -rv ${G_USER_ROOTFS_DIR}/* ${ROOTFS_BASE}/
+	cp -rpv ${G_USER_ROOTFS_DIR}/* ${ROOTFS_BASE}/
 
 ## clenup command
 echo "#!/bin/bash
@@ -1227,14 +1227,9 @@ function cmd_make_production_sw() {
 	pr_info "Splitting rootfs image..."
 	split -b 50M -d ${PARAM_OUTPUT_DIR}/rootfs.tar.gz rootfs.tar.gz.
 
-
-	PROD_IMG_SIZE=$((du -BG | grep -o '[0-9]\+') * 3)
-
 	pr_info "Creating vapr_install.img"
 
 	mkdir ${G_TMP_DIR}/vapr_install
-
-	#pr_info "Production Image Size: ${PROD_IMG_SIZE}"
 
 	dd if=/dev/zero of=vapr_install.img bs=1G count=5
 	mkfs.vfat vapr_install.img
